@@ -58,8 +58,8 @@ class Conv2d:
     
     def transform_dryrun(self,X):
         batch_size, in_channels, height, width = len(X), len(X[0]), len(X[0][0]), len(X[0][0][0])
-        padded_height = height + 2
-        padded_width = width + 2
+        padded_height = height + 2 * self.padding
+        padded_width = width + 2 * self.padding
         padded_X = [
             [
                 [[0 for _ in range(padded_width)] for _ in range(padded_height)]
@@ -76,11 +76,9 @@ class Conv2d:
                         padded_X[b][c][i + 1][j + 1] = X[b][c][i][j]
 
        # Calculate output dimensions
-        out_height = (padded_height - self.kernel_size) // self.stride + 1
-        out_width = (padded_width - self.kernel_size) // self.stride + 1
-
-
-
+        out_height = ((padded_height - self.kernel_size) // self.stride) + 1
+        out_width = ((padded_width - self.kernel_size) // self.stride) + 1
+        
         # Output will have shape (batch_size, out_channels, out_height, out_width)
         out = [
             [
@@ -148,7 +146,7 @@ class MaxPool2d:
                                 if h < height and w < width:
                                     max_val = max(max_val, X[b][c][h][w])
                         out[b][c][i][j] = max_val
-        print(np.array(np.array(output).shape))
+        print(np.array(np.array(out).shape))
 
         return out
 
@@ -196,10 +194,7 @@ class BatchNorm2d:
                 for h in range(height):
                     for w in range(width):
                         normalized = (input[n][c][h][w] - batch_mean[c]) / math.sqrt(batch_var[c] + self.eps)
-                        output[n][c][h][w] = self.gamma[c] * normalized + self.beta[c]
-
-        print(np.array(np.array(output).shape))
-    
+                        output[n][c][h][w] = self.gamma[c] * normalized + self.beta[c]    
         return output
 
 import random

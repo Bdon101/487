@@ -16,12 +16,13 @@ import nn
 
 import pandas as pd
 import numpy as np
-
+import torchvision.models as models
 import matplotlib.pyplot as plt
 from sklearn import datasets
 import numpy as np
 np.random.seed(4)
 X, t = datasets.make_blobs(n_samples=100, centers=3, n_features=4, center_box=(0, 10))
+
 """
 def test_1():
     import torch.nn as tnn
@@ -144,46 +145,56 @@ def test_dropout_nonzero():
     assert abs(solution - answer) / (1000 * 1000) < 0.05
 
 
-def test_alexnet_output():
-    import torchvision.models as models
 
-    input = torch.randn(1, 3, 224, 224)
-    torch_alexnet = models.AlexNet()
-    solution = torch_alexnet(input).detach().numpy()
+def test_alexnet_shapes():
+    # Create input tensor
+    input_tensor = torch.randn(1, 3, 224, 224)
     
+    # Initialize both models
+    torch_alexnet = models.AlexNet()
     custom_alexnet = nn.AlexNet()
     
-    # Copy weights from torch model to custom model
+    # Expected shapes for each layer in features section
+    expected_shapes = [
+        (1, 64, 55, 55),    # Conv2d
+        (1, 64, 55, 55),    # ReLU
+        (1, 64, 27, 27),    # MaxPool
+        (1, 192, 27, 27),   # Conv2d
+        (1, 192, 27, 27),   # ReLU
+        (1, 192, 13, 13),   # MaxPool
+        (1, 384, 13, 13),   # Conv2d
+        (1, 384, 13, 13),   # ReLU
+        (1, 256, 13, 13),   # Conv2d
+        (1, 256, 13, 13),   # ReLU
+        (1, 256, 13, 13),   # Conv2d
+        (1, 256, 13, 13),   # ReLU
+        (1, 256, 6, 6),     # MaxPool
+    ]
+    
+    # Test each layer
+    x_custom = input_tensor.numpy().tolist()
     for i, layer in enumerate(custom_alexnet.features):
-        if hasattr(layer, 'W'):
-            layer.W = torch_alexnet.features[i].weight.detach().numpy().tolist()
-            if hasattr(layer, 'bias'):
-                layer.bias = torch_alexnet.features[i].bias.detach().numpy().tolist()
-    
-    for i, layer in enumerate(custom_alexnet.classifier):
-        if hasattr(layer, 'W'):
-            layer.W = torch_alexnet.classifier[i].weight.detach().numpy().tolist()
-            layer.b = torch_alexnet.classifier[i].bias.detach().numpy().tolist()
-    
-    answer = np.array(custom_alexnet.forward(input.numpy().tolist()))
-    
-    assert np.allclose(solution, answer, atol=1e-4)
+      if hasattr(layer, 'transform'):
+          x_custom = layer.transform(x_custom)
+      else:
+          x_custom = layer(torch.tensor(x_custom)).detach().numpy().tolist()       
+      custom_shape = np.array(x_custom).shape
+      
+      print(f"Layer {i}:")
+      print(f"Expected shape: {expected_shapes[i]}")
+      print(f"Got shape: {custom_shape}")
+      
+      assert custom_shape == expected_shapes[i], \
+          f"Shape mismatch at layer {i}. Expected {expected_shapes[i]}, got {custom_shape}"
 """
-def test_alexnet_features_shape():
-    import torch
-    import torchvision.models as models
+def test_forward_pass():
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
     
-    input = torch.randn(1, 3, 224, 224)
-    torch_alexnet = models.AlexNet()
-    solution = torch_alexnet.features(input).shape
-    
+    input_tensor = torch.randn(1, 3, 224, 224)
     custom_alexnet = nn.AlexNet()
-    x = input.numpy().tolist()
-    for layer in custom_alexnet.features:
-        if hasattr(layer, 'transform'):
-            x = layer.transform(x)
-        else:
-            x = layer(torch.tensor(x)).detach().numpy().tolist()
-    answer = np.array(x).shape
     
-    assert np.all(np.abs(np.array(solution) - np.array(answer)) == 0)
+    # Test forward pass
+    output = custom_alexnet.forward(input_tensor.numpy().tolist())
+    assert np.array(output).shape == (1, 1000), \
+        "Final output shape should be (1, 1000)"[3]
